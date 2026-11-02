@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cheksiz Chicken Shooter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 1.3rem;
+            margin-bottom: 2px;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+        #score-board {
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+            color: #00ffcc;
+            font-weight: bold;
+        }
+        #game-container {
+            position: relative;
+            width: 350px;
+            height: 500px;
+            background: #11111d;
+            border: 3px solid #ffcc00;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.3);
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: radial-gradient(circle, #1a1a2e 0%, #11111d 100%);
+        }
+        #start-btn {
+            margin-top: 15px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            background: #ffcc00;
+            color: #11111d;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+            transition: 0.2s;
+        }
+        #start-btn:active {
+            transform: scale(0.95);
+        }
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: #ff3366;
+            font-weight: bold;
+            display: none;
+            z-index: 10;
+        }
+        #game-over span {
+            font-size: 1rem;
+            color: #fff;
+            margin-top: 10px;
+        }
+        #restart-btn {
+            margin-top: 15px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            background: #00ffcc;
+            color: #11111d;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🐔 Chicken Shooter</h1>
+    <div id="score-board">Hisob (Score): <span id="score">0</span></div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="350" height="500"></canvas>
+        <div id="game-over">
+            O'yin Tugadi! 💥
+            <span id="final-score">Hisobingiz: 0</span>
+            <button id="restart-btn" onclick="resetGame()">Qaytadan O'ynash</button>
+        </div>
+    </div>
+
+    <button id="start-btn">O'yinni Boshlash</button>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const startBtn = document.getElementById("start-btn");
+        const gameOverScreen = document.getElementById("game-over");
+        const scoreEl = document.getElementById("score");
+        const finalScoreEl = document.getElementById("final-score");
+
+        let score = 0;
+        let gameActive = false;
+        let tiltX = 0;
+
+        // O'yinchi (Kema)
+        let player = {
+            x: 150,
+            y: 440,
+            w: 40,
+            h: 40,
+            speed: 5
+        };
+
+        let bullets = [];
+        let chickens = [];
+        let spawnTimer = 0;
+        let spawnInterval = 60; // Tovuqlar chiqish tezligi (kamayib boradi)
+
+        // Tovuqlar va o'qlar massivini boshqarish
+        function spawnChicken() {
+            let size = 35;
+            let x = Math.random() * (canvas.width - size);
+            chickens.push({
+                x: x,
+                y: -40,
+                w: size,
+                h: size,
+                speed: 1.2 + Math.random() * 1.5
+            });
+        }
+
+        // Avtomatik o'q otish
+        function shootBullet() {
+            if (!gameActive) return;
+            bullets.push({
+                x: player.x + player.w / 2 - 3,
+                y: player.y,
+                w: 6,
+                h: 12,
+                speed: 7
+            });
+        }
+        setInterval(shootBullet, 350); // Har 0.35 sekundda avtofire
+
+        function update() {
+            if (!gameActive) return;
+
+            // Giroskop orqali kemani harakatlantirish
+            player.x += tiltX * player.speed;
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
+
+            // O'ylarni harakatlantirish
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bullets[i].speed;
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Tovuqlarni harakatlantirish va qiyinlashtirish
+            spawnTimer++;
+            if (spawnTimer > spawnInterval) {
+                spawnChicken();
+                spawnTimer = 0;
+                // Vaqt o'tgan sari tovuqlar tezroq va ko'proq chiqadi (cheksiz qiyinlashish)
+                if (spawnInterval > 20) spawnInterval -= 0.5;
+            }
+
+            for (let i = chickens.length - 1; i >= 0; i--) {
+                chickens[i].y += chickens[i].speed;
+
+                // Tovuq pastga tushib ketsa - Yutqazasiz!
+                if (chickens[i].y > canvas.height) {
+                    endGame();
+                }
+
+                // Kema bilan tovuq to'qnashsa - Yutqazasiz!
+                if (
+                    player.x < chickens[i].x + chickens[i].w &&
+                    player.x + player.w > chickens[i].x &&
+                    player.y < chickens[i].y + chickens[i].h &&
+                    player.y + player.h > chickens[i].y
+                ) {
+                    endGame();
+                }
+
+                // O'q tekkanini tekshirish (Tovuqni otib tushirish)
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (
+                        bullets[j].x < chickens[i].x + chickens[i].w &&
+                        bullets[j].x + bullets[j].w > chickens[i].x &&
+                        bullets[j].y < chickens[i].y + chickens[i].h &&
+                        bullets[j].y + bullets[j].h > chickens[i].y
+                    ) {
+                        // Tovuq yo'q qilindi
+                        chickens.splice(i, 1);
+                        bullets.splice(j, 1);
+                        score += 10;
+                        scoreEl.innerText = score;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Kemani chizish (Kosmik kema shakli)
+            ctx.fillStyle = '#00ffcc';
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.w / 2, player.y);
+            ctx.lineTo(player.x, player.y + player.h);
+            ctx.lineTo(player.x + player.w, player.y + player.h);
+            ctx.closePath();
+            ctx.fill();
+
+            // O'qlarni chizish
+            ctx.fillStyle = '#ff3366';
+            for (let b of bullets) {
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+            }
+
+            // Tovuqlarni chizish (Emoji ko'rinishida)
+            ctx.font = "30px Arial";
+            for (let c of chickens) {
+                ctx.fillText("🐔", c.x, c.y + 30);
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (gameActive) {
+                requestAnimationFrame(loop);
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            finalScoreEl.innerText = "Hisobingiz: " + score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function resetGame() {
+            score = 0;
+            scoreEl.innerText = score;
+            chickens = [];
+            bullets = [];
+            spawnInterval = 60;
+            player.x = 150;
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            loop();
+        }
+
+        // Kompyuter uchun strelka tugmalari (test qilish uchun)
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') tiltX = -2;
+            if (e.key === 'ArrowRight') tiltX = 2;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (['ArrowLeft', 'ArrowRight'].includes(e.key)) tiltX = 0;
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            startBtn.style.display = 'none';
+                            gameActive = true;
+                            loop();
+                        } else {
+                            alert("Giroskop uchun ruxsat berilmadi!");
+                        }
+                    }).catch(console.error);
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                startBtn.style.display = 'none';
+                gameActive = true;
+                loop();
+            }
+        });
+
+        function handleOrientation(event) {
+            if (event.gamma !== null) {
+                // gamma: chapga/o'ngga egish (-90 dan 90 gacha)
+                tiltX = event.gamma / 4; 
+            }
+        }
+
+        // Boshlang'ich kadr
+        draw();
+    </script>
+</body>
+</html>
