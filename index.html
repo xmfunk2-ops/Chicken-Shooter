@@ -126,13 +126,13 @@
         let gameActive = false;
         let tiltX = 0;
 
-        // Kichkina samolyotcha obyekti
+        // Samolyot obyekti
         let player = {
             x: 160,
             y: 390,
             width: 36,
             height: 36,
-            speed: 5
+            speed: 4.5
         };
 
         let bullets = [];
@@ -143,17 +143,17 @@
             let chWidth = 30;
             let chHeight = 30;
             let chX = Math.random() * (canvas.width - chWidth);
-            let chSpeed = 1 + Math.random() * 1.5 + (score * 0.02);
+            // Tovuqlar tezligi yumshatildi (haddan tashqari tez tushib ketmaydi)
+            let chSpeed = 0.8 + Math.random() * 0.8 + (score * 0.005);
             chickens.push({ x: chX, y: -30, w: chWidth, h: chHeight, speed: chSpeed });
         }
 
         function update() {
             if (!gameActive) return;
 
-            // Giroskop orqali samolyotni harakatlantirish
+            // Giroskop sezgirligi yumshatildi (bo'luvchi raqam kattalashtirildi)
             player.x += tiltX * player.speed;
 
-            // Chegaradan chiqib ketmasligi
             if (player.x < 0) player.x = 0;
             if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
 
@@ -165,9 +165,9 @@
                 }
             }
 
-            // Tovuqlar harakati
+            // Tovuqlar chiqish vaqti biroz sekinlashtirildi
             spawnTimer++;
-            if (spawnTimer > 40 - Math.min(score, 25)) {
+            if (spawnTimer > 55 - Math.min(score, 30)) {
                 spawnChicken();
                 spawnTimer = 0;
             }
@@ -175,12 +175,10 @@
             for (let i = chickens.length - 1; i >= 0; i--) {
                 chickens[i].y += chickens[i].speed;
 
-                // Tovuq pastga yetib kelsa
                 if (chickens[i].y > canvas.height - 40) {
                     endGame();
                 }
 
-                // Samolyot bilan tovuq to'qnashuvi
                 if (
                     player.x < chickens[i].x + chickens[i].w &&
                     player.x + player.width > chickens[i].x &&
@@ -190,7 +188,6 @@
                     endGame();
                 }
 
-                // O'q va tovuq to'qnashuvi
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     if (
                         bullets[j].x < chickens[i].x + chickens[i].w &&
@@ -211,25 +208,21 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Kichkina samolyotni chizish (Ajoyib detallar bilan)
+            // Samolyotni chizish
             ctx.save();
             let px = player.x;
             let py = player.y;
 
-            // Samolyot korpusi (Asosiy qism)
             ctx.fillStyle = '#00ffcc';
             ctx.fillRect(px + 14, py + 4, 8, 28);
 
-            // Qanotlari
             ctx.fillStyle = '#00bcd4';
             ctx.fillRect(px + 2, py + 14, 32, 6);
 
-            // Dum qismi
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(px + 10, py + 28, 16, 4);
             ctx.fillRect(px + 16, py + 32, 4, 4);
 
-            // Tumshug'i (Oldi qismi)
             ctx.fillStyle = '#ffcc00';
             ctx.fillRect(px + 16, py, 4, 6);
 
@@ -258,7 +251,6 @@
 
         function shoot() {
             if (!gameActive) return;
-            // Samolyotning o'rtasidan ikkita o'q otilishi (yoki bitta markaziy)
             bullets.push({
                 x: player.x + player.width / 2 - 2,
                 y: player.y,
@@ -269,7 +261,7 @@
 
         setInterval(() => {
             if (gameActive) shoot();
-        }, 300);
+        }, 350);
 
         function endGame() {
             gameActive = false;
@@ -289,8 +281,8 @@
         }
 
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') tiltX = -2;
-            if (e.key === 'ArrowRight') tiltX = 2;
+            if (e.key === 'ArrowLeft') tiltX = -1.5;
+            if (e.key === 'ArrowRight') tiltX = 1.5;
         });
         window.addEventListener('keyup', (e) => {
             if (['ArrowLeft', 'ArrowRight'].includes(e.key)) tiltX = 0;
@@ -319,7 +311,8 @@
 
         function handleOrientation(event) {
             if (event.gamma !== null) {
-                tiltX = event.gamma / 5; 
+                // Giroskop sezgirligi yumshatildi (9 ga bo'lindi, bu oldingiga qaraganda ancha silliqroq qiladi)
+                tiltX = event.gamma / 9; 
             }
         }
     </script>
